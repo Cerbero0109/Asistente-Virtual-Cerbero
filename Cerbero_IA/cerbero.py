@@ -1,12 +1,18 @@
-import pyttsx3 as px
+import os
+import time
+import random
 import datetime
-import speech_recognition as sr
+import winsound
+import subprocess as sub
+import pyttsx3 as px
+import pywhatkit
+import pyautogui
+import psutil
 import wikipedia
 import webbrowser as wb
-import pyautogui 
 from pathlib import Path
-import psutil
-import random
+import speech_recognition as sr
+
 
 # Configuración del motor de voz
 engine = px.init()
@@ -51,8 +57,7 @@ def wishme():
     elif hour >= 18 and hour < 24:
         speak("Buenas noches")
     else:
-        speak("Que tarde... ya es de madrugada")
-    
+        speak("Que tarde... ya es de madrugada")    
     speak("Soy Cerbero, estoy a tu servicio. ¿Cómo puedo ayudarte?")
 
 # Función para reconocer voz
@@ -63,10 +68,9 @@ def takeVoice():
         r.adjust_for_ambient_noise(source)
         print("Escuchando...")
         audio = r.listen(source)
-    
     try:
         print("Reconociendo...")
-        return r.recognize_google(audio, language="es-ES")
+        return r.recognize_google(audio, language="es-ES,en-US")
     except sr.UnknownValueError:
         speak("No pude entender el audio. Por favor intenta de nuevo.")
         return None
@@ -74,13 +78,17 @@ def takeVoice():
         speak(f"Hubo un error con el servicio de Google: {e}")
         return None
 
+
 # Función para buscar en Wikipedia
 def search_wikipedia(query):
     wikipedia.set_lang("es")  
     try:
+        speak("Claro! ¿Qué te gustaria buscar en Wikipedia?")
+        query = takeVoice()
         speak("Buscando en Wikipedia...")
-        result = wikipedia.summary(query, sentences=2)
+        result = wikipedia.summary(query, sentences=1)
         speak("Esto es lo que encontré:")
+        print(result)
         speak(result)
     except wikipedia.exceptions.DisambiguationError as e:
         speak("El término es ambiguo. Intenta ser más específico.")
@@ -93,7 +101,7 @@ def search_wikipedia(query):
 
 
 # Funcion para buscar en Google Chrome
-def search_chrome(query):
+def search_chrome():
     try:
         speak("¿Qué te gustaría buscar?")
         search_query = takeVoice()
@@ -127,7 +135,7 @@ def save_screenshot(img):
     img.save(path)
     print(f"Captura guardada en: {path}")
 
-import psutil
+
 
 # Función para ver el estado de la PC
 def pc_status():
@@ -143,6 +151,7 @@ def pc_status():
             speak("El equipo no está conectado a la corriente")
     else:
         speak("No se detectó batería en este dispositivo")
+
 
 # Funcion para contar chistes
 def tell_joke():
@@ -171,6 +180,71 @@ def tell_joke():
     joke = random.choice(jokes)
     speak(joke)
 
+
+# Funcion para Reproducir Videos en YT
+def search_videos():
+    speak("Por supuesto ¿Qué te gustaria escuchar?")
+    rec = takeVoice()
+    music = rec.replace("reproduce" , "")
+    print("Reproduciendo..." + music)
+    pywhatkit.playonyt(music)
+
+
+# Funcion de Alarma
+def set_alarm():
+    try:
+        speak("Por favor, dime la hora para la alarma en formato de 24 horas.")
+        alarm_time = takeVoice() 
+        alarm_time = alarm_time.strip()
+        
+        if ":" not in alarm_time:
+            speak("Formato de hora no válido. Asegúrate de usar el formato HH:MM.")
+            return
+
+        hour, minute = map(int, alarm_time.split(":")) 
+        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+            speak("La hora ingresada no es válida. Por favor, inténtalo de nuevo.")
+            return
+
+        speak(f"Alarma configurada para las {hour}:{minute}. Te avisaré cuando sea el momento.")
+        while True:
+            now = datetime.datetime.now()
+            if now.hour == hour and now.minute == minute:
+                speak("Es hora. La alarma está sonando.")
+                for _ in range(5):  
+                    winsound.Beep(1000, 500) 
+                break
+            time.sleep(10)  
+    except ValueError:
+        speak("Hubo un error configurando la alarma. Inténtalo de nuevo.")
+
+
+# Diccionario de Paginas 
+sites = {
+        'UNICAES' : "https://plataforma.catolica.edu.sv/login/index.php",
+        'Google' : "https://www.google.com/",
+        'Facebook' : "https://www.facebook.com/",
+        'YouTube' : "https://www.youtube.com/"
+}
+
+# Funcion buscar abrir sitios web
+def search_websites():
+    speak("¿Que sitio web deseas que abra?")
+    command = takeVoice()
+    if not command:
+        speak("No entendí el comando. Por favor, intenta nuevamente.")
+        return
+    
+    for site in sites:
+        if site in command:
+            sub.call(f'start chrome.exe {sites[site]}', shell=True)
+            speak(f"Abriendo {site}")
+            break
+    else:
+        speak("No encontré un sitio correspondiente en la lista.")
+
+
+
 # Main
 if __name__ == "__main__":
     wishme()
@@ -180,8 +254,7 @@ if __name__ == "__main__":
         if not query:
             continue
         query = query.lower()
-        print(f"Comando reconocido: {query}")
-        
+        print(f"Comando reconocido: {query}")       
         if "hora" in query:
             tell_time()
         elif "fecha" in query:
@@ -194,7 +267,7 @@ if __name__ == "__main__":
                 speak("Por favor, dime qué deseas buscar en Wikipedia.")
         elif "google" in query:
             search_chrome(query)
-        elif "recuerda" in query:
+        elif "recuerdes" in query:
             remeber_that(query)
         elif "recuerdo" in query:
             tell_remeber()
@@ -206,6 +279,18 @@ if __name__ == "__main__":
             pc_status()
         elif "chiste" in query:
             tell_joke()
+        elif "reproduce" in query:
+            search_videos()
+        elif "alarma" in query:
+            set_alarm()
+        elif "abre" in query:
+            search_websites()
+        elif "repite" in query:
+            speak("Ok di algo para repetir:")
+            prueba = takeVoice()
+            print(prueba)
+            speak(prueba)
         elif "apagarse" in query:
             speak("Apagándome, hasta luego Gabriel.")
             quit()
+
